@@ -20,11 +20,124 @@ public delegate bool MapFeatureDelegate(MapFeatureData featureData);
 public readonly ref struct MapFeatureData
 {
     public long Id { get; init; }
+    public enum StringReplacer : byte
+    {
+        Admin_level = 0,
+        Amenity = 1,
+        Boundary = 2,
+        Building = 3,
+        Highway = 4,
+        Landuse = 5,
+        Leisure = 6,
+        Name = 7,
+        Natural = 8,
+        Place = 9,
+        Railway = 10,
+        Water = 11,
+        Waterway = 12,
+        Water_point = 13
+
+    }
+    //public enum ValuesString : byte
+    //{
+    //    Unknown = 0,
+    //    Hamlet = 1,
+    //    Administrative = 2,
+    //    City = 3,
+    //    Town = 4,
+    //    Farm = 5,
+    //    Meadow = 6,
+    //    Grass = 7,
+    //    Greenfield = 8,
+    //    Recreation_Ground = 9,
+    //    Winter_Sports = 10,
+    //    Allotments = 11,
+    //    Reservoir = 12,
+    //    Basin = 13,
+    //    Residential = 14,
+    //    Cemetery = 15,
+    //    Industrial = 16,
+    //    Commercial = 17,
+    //    Square = 18,
+    //    Construction = 19,
+    //    Military = 20,
+    //    Quarry = 21,
+    //    Brownfield = 22,
+    //    Forest = 23,
+    //    Orchard = 24,
+    //    Motorway = 25,
+    //    Trunk = 26,
+    //    Primary = 27,
+    //    Secondary = 28,
+    //    Tertiary = 29,
+    //    Unclassified = 30,
+    //    Road = 31,
+    //    Fell = 32,
+    //    Grassland = 33,
+    //    Heath = 34,
+    //    Moor = 35,
+    //    Scrub = 36,
+    //    Wetland = 37,
+    //    Wood = 38,
+    //    Tree_row = 39,
+    //    Bare_rock = 40,
+    //    Rock = 41,
+    //    Scree = 42,
+    //    Beach = 43,
+    //    Sand = 44,
+    //    Water = 45,
+    //    Locality = 46,
+    //    Two = 47,
+    //    Yes = 48,
+    //    Track = 49,
+    //    Saddle = 50,
+    //    Path = 51,
+    //    Footway = 52,
+    //    Service = 53,
+    //    Lake = 54,
+    //    Toilets = 55,
+    //    Parking = 56,
+    //    Pedestrian = 57,
+    //    Ascensor = 58,
+    //    Restaurant = 59,
+    //    Primary_link = 60,
+    //    College = 61,
+    //    Village = 62,
+    //    Neighbourhood = 63,
+    //    Bus_stop = 64,
+    //    Engolasters = 65,
+    //    Swimming_pool = 66,
+    //    Fuel = 77,
+    //    Seat = 78,
+    //    Motosprint = 79,
+    //    Andbank = 80,
+    //    Pharmacy = 81,
+    //    Bar = 82,
+    //    Hospital = 83,
+    //    Bench = 84,
+    //    Playground = 85,
+    //    Bank = 86,
+    //    Gril = 87,
+    //    Peak = 88,
+    //    Cirerer = 89,
+    //    Barrera = 90,
+    //    School = 91,
+    //    Tous = 92,
+    //    Jamaica = 93,
+    //    Bbq = 94,
+    //    House = 95,
+    //    Tree = 96,
+    //    Steps = 97,
+    //    Pitch = 98,
+    //    Apartments = 99,
+    //    Atm = 100,
+
+    //}
 
     public GeometryType Type { get; init; }
     public ReadOnlySpan<char> Label { get; init; }
     public ReadOnlySpan<Coordinate> Coordinates { get; init; }
-    public Dictionary<string, string> Properties { get; init; }
+    public Dictionary<StringReplacer, string> Properties { get; init; }
 }
 
 /// <summary>
@@ -65,7 +178,13 @@ public unsafe class DataFile : IDisposable
         _mma.SafeMemoryMappedViewHandle.AcquirePointer(ref _ptr);
         _fileHeader = (FileHeader*)_ptr;
     }
-
+    public static string UpperC(string input) =>
+    input switch
+    {
+        null => throw new ArgumentNullException(nameof(input)),
+        "" => throw new ArgumentException($"{nameof(input)} cannot be empty", nameof(input)),
+        _ => string.Concat(input[0].ToString().ToUpper(), input.AsSpan(1))
+    };
     public void Dispose()
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
@@ -181,12 +300,32 @@ public unsafe class DataFile : IDisposable
 
                 if (isFeatureInBBox)
                 {
-                    var properties = new Dictionary<string, string>(feature->PropertyCount);
+                    var properties = new Dictionary<MapFeatureData.StringReplacer, string>(feature->PropertyCount);
                     for (var p = 0; p < feature->PropertyCount; ++p)
                     {
                         GetProperty(header.Tile.Value.StringsOffsetInBytes, header.Tile.Value.CharactersOffsetInBytes, p * 2 + feature->PropertiesOffset, out var key, out var value);
-                        properties.Add(key.ToString(), value.ToString());
-                    }
+                        var kaystr = char.ToUpper(key.ToString()[0]) + key.ToString().Substring(1);
+                        var flag =  Enum.IsDefined(typeof(MapFeatureData.StringReplacer), kaystr);
+                        
+                        MapFeatureData.StringReplacer keyVal;
+
+                        if (flag)
+                        {
+
+                            try
+                            {
+                                keyVal = (MapFeatureData.StringReplacer)Enum.Parse(typeof(MapFeatureData.StringReplacer), kaystr);
+                                properties.Add(keyVal, value.ToString());
+
+                            }
+                            catch (ArgumentException)
+                            {
+                                Console.WriteLine("Somethig went wrong!");
+                            }
+                            
+                        }
+
+                        }
 
                     if (!action(new MapFeatureData
                         {

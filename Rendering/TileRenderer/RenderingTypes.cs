@@ -1,6 +1,7 @@
 using Mapster.Common.MemoryMappedTypes;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Processing;
 
@@ -108,36 +109,41 @@ public struct GeoFeature : BaseShape
     public GeoFeature(ReadOnlySpan<Coordinate> c, MapFeatureData feature)
     {
         IsPolygon = feature.Type == GeometryType.Polygon;
-        var naturalKey = feature.Properties.FirstOrDefault(x => x.Key == "natural").Value;
+        //string naturalKey = null;
+        //if( feature.Properties.TryGetValue(MapFeatureData.StringReplacer.Natural, out string result))
+        //{
+        //    naturalKey = result;
+        //}
+        var naturalKey = feature.Properties.FirstOrDefault(x => x.Key == MapFeatureData.StringReplacer.Natural).Value;
         Type = GeoFeatureType.Unknown;
         if (naturalKey != null)
         {
-            if (naturalKey == "fell" ||
-                naturalKey == "grassland" ||
-                naturalKey == "heath" ||
-                naturalKey == "moor" ||
-                naturalKey == "scrub" ||
-                naturalKey == "wetland")
+            if (string.Equals(naturalKey, "fell", StringComparison.OrdinalIgnoreCase)||
+               string.Equals(naturalKey, "grassland", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(naturalKey, "heath", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(naturalKey, "moor", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(naturalKey, "scrub", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(naturalKey, "wetland", StringComparison.OrdinalIgnoreCase))
             {
                 Type = GeoFeatureType.Plain;
             }
-            else if (naturalKey == "wood" ||
-                     naturalKey == "tree_row")
+            else if (string.Equals(naturalKey, "wood", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(naturalKey, "tree_row", StringComparison.OrdinalIgnoreCase))
             {
                 Type = GeoFeatureType.Forest;
             }
-            else if (naturalKey == "bare_rock" ||
-                     naturalKey == "rock" ||
-                     naturalKey == "scree")
+            else if (string.Equals(naturalKey, "bare_rock", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(naturalKey, "rock", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(naturalKey, "scree", StringComparison.OrdinalIgnoreCase))
             {
                 Type = GeoFeatureType.Mountains;
             }
-            else if (naturalKey == "beach" ||
-                     naturalKey == "sand")
+            else if (string.Equals(naturalKey, "beach", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(naturalKey, "sand", StringComparison.OrdinalIgnoreCase) )
             {
                 Type = GeoFeatureType.Desert;
             }
-            else if (naturalKey == "water")
+            else if (string.Equals(naturalKey, "water", StringComparison.OrdinalIgnoreCase))
             {
                 Type = GeoFeatureType.Water;
             }
@@ -202,7 +208,7 @@ public struct PopulatedPlace : BaseShape
         for (var i = 0; i < c.Length; i++)
             ScreenCoordinates[i] = new PointF((float)MercatorProjection.lonToX(c[i].Longitude),
                 (float)MercatorProjection.latToY(c[i].Latitude));
-        var name = feature.Properties.FirstOrDefault(x => x.Key == "name").Value;
+        var name = feature.Properties.FirstOrDefault(x => x.Key == MapFeatureData.StringReplacer.Name).Value;
 
         if (feature.Label.IsEmpty)
         {
@@ -211,7 +217,8 @@ public struct PopulatedPlace : BaseShape
         }
         else
         {
-            Name = string.IsNullOrWhiteSpace(name) ? feature.Label.ToString() : name;
+            var r = name.ToString();
+            Name = string.IsNullOrWhiteSpace(name.ToString()) ? feature.Label.ToString() : name.ToString();
             ShouldRender = true;
         }
     }
@@ -224,10 +231,10 @@ public struct PopulatedPlace : BaseShape
             return false;
         }
         foreach (var entry in feature.Properties)
-            if (entry.Key.StartsWith("place"))
+            if (entry.Key == MapFeatureData.StringReplacer.Place)
             {
-                if (entry.Value.StartsWith("city") || entry.Value.StartsWith("town") ||
-                    entry.Value.StartsWith("locality") || entry.Value.StartsWith("hamlet"))
+                if (string.Equals(entry.Value, "city", StringComparison.OrdinalIgnoreCase) || string.Equals(entry.Value, "town", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(entry.Value, "locality", StringComparison.OrdinalIgnoreCase)  || string.Equals(entry.Value, "hamlet", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -264,11 +271,11 @@ public struct Border : BaseShape
         var foundLevel = false;
         foreach (var entry in feature.Properties)
         {
-            if (entry.Key.StartsWith("boundary") && entry.Value.StartsWith("administrative"))
+            if (entry.Key== MapFeatureData.StringReplacer.Boundary && string.Equals(entry.Value, "administrative", StringComparison.OrdinalIgnoreCase))
             {
                 foundBoundary = true;
             }
-            if (entry.Key.StartsWith("admin_level") && entry.Value == "2")
+            if (entry.Key == MapFeatureData.StringReplacer.Admin_level && string.Equals(entry.Value, "2", StringComparison.OrdinalIgnoreCase))
             {
                 foundLevel = true;
             }
